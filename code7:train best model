@@ -1,0 +1,192 @@
+#
+import numpy as np
+import pandas as pd
+from scipy.stats import skew, kurtosis
+import matplotlib.pyplot as plt
+
+
+datasets = [videodata, videodata1, videodata2, videodata3]
+dataset_labels = ["videodata", "videodata1", "videodata2", "videodata3"]
+
+# Step 1: Extract Features
+features = {}
+for i, dataset in enumerate(datasets):
+    means = np.mean(dataset, axis=0)  # Mean of each column
+    sds = np.std(dataset, axis=0)  # Standard deviation of each column
+    cvs = sds / means  # Coefficient of variation
+    sums = np.sum(dataset, axis=0)  # Sum of each column
+    skews = skew(dataset, axis=0)  # Skewness of each column
+    kurtoses = kurtosis(dataset, axis=0)  # Kurtosis of each column
+
+    features[dataset_labels[i]] = {
+        "Mean": means,
+        "SD": sds,
+        "CV": cvs,
+        "Sum": sums,
+        "Skew": skews,
+        "Kurtosis": kurtoses
+    }
+
+# Step 2: Save Features to CSV
+for label, stats in features.items():
+    df = pd.DataFrame(stats)
+    df.to_csv(f"{label}_features.csv", index=False)
+
+# Step 3: Visualize Selected Features
+for label, stats in features.items():
+    plt.figure(figsize=(10, 4))
+    plt.bar(range(len(stats["Mean"])), stats["Mean"], color='skyblue', label="Mean")
+    plt.xlabel('Columns')
+    plt.ylabel('Mean Values')
+    plt.title(f'Mean for {label}')
+    plt.legend()
+    plt.show()
+
+    plt.figure(figsize=(10, 4))
+    plt.bar(range(len(stats["Skew"])), stats["Skew"], color='orange', label="Skewness")
+    plt.xlabel('Columns')
+    plt.ylabel('Skewness Values')
+    plt.title(f'Skewness for {label}')
+    plt.legend()
+    plt.show()
+
+    plt.figure(figsize=(10, 4))
+    plt.bar(range(len(stats["Kurtosis"])), stats["Kurtosis"], color='green', label="Kurtosis")
+    plt.xlabel('Columns')
+    plt.ylabel('Kurtosis Values')
+    plt.title(f'Kurtosis for {label}')
+    plt.legend()
+    plt.show()
+
+# Step 4: Combine All Features for Further Analysis
+combined_features = []
+for label, stats in features.items():
+    df = pd.DataFrame(stats)
+    df["Dataset"] = label
+    combined_features.append(df)
+
+combined_features_df = pd.concat(combined_features, ignore_index=True)
+combined_features_df.to_csv("combined_features.csv", index=False)
+
+print("Features extracted and saved to CSV files.")
+
+
+
+
+#Train best model
+import pandas as pd
+from sklearn.model_selection import train_test_split, cross_val_score
+from sklearn.linear_model import LinearRegression
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.svm import SVR
+from sklearn.metrics import r2_score, mean_squared_error
+import numpy as np
+
+# Step 1: Load the combined features
+data = pd.read_csv("combined_features.csv")
+
+# Step 2: Preprocess the data
+# Convert categorical labels to numerical (if present)
+data["Dataset"] = data["Dataset"].astype("category").cat.codes
+
+# Separate features and target variable
+X = data.drop(columns=["Dataset"])  # Features
+y = data["Dataset"]  # Target
+
+# Normalize the features (optional for some models)
+X = (X - X.mean()) / X.std()
+
+# Step 3: Split the data into training and testing sets
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# Step 4: Train multiple models
+models = {
+    "Linear Regression": LinearRegression(),
+    "Random Forest": RandomForestRegressor(random_state=42),
+    "Support Vector Regressor": SVR()
+}
+
+performance = []
+for name, model in models.items():
+    # Cross-validation
+    cv_scores = cross_val_score(model, X_train, y_train, cv=5, scoring='r2')
+    mean_cv_r2 = np.mean(cv_scores)
+
+    # Fit and test
+    model.fit(X_train, y_train)
+    y_pred = model.predict(X_test)
+    test_r2 = r2_score(y_test, y_pred)
+    test_mse = mean_squared_error(y_test, y_pred)
+
+    performance.append({
+        "Model": name,
+        "CV R²": mean_cv_r2,
+        "Test R²": test_r2,
+        "Test MSE": test_mse
+    })
+
+# Step 5: Summarize performance
+performance_df = pd.DataFrame(performance)
+performance_df.to_csv("model_performance.csv", index=False)
+print(performance_df)
+
+# Identify the best model
+best_model = performance_df.loc[performance_df["Test R²"].idxmax()]
+print("\nBest Model:")
+print(best_model)
+
+
+#correlation heatmap of features
+  import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+# Load the combined features data
+# Replace 'combined_features.csv' with the actual file name if different
+data = pd.read_csv("combined_features.csv")
+
+# Step 1: Check the structure of the data
+print(data.head())
+
+# Step 2: Pairwise Scatter Plots
+# Visualize the relationship between features and the target variable
+sns.pairplot(data, hue="Dataset", palette="Set2")
+plt.suptitle("Pairwise Scatter Plots of Features", y=1.02)
+plt.show()
+
+# Step 3: Box Plots
+# Visualize how features vary across datasets (target variable)
+for column in data.columns[:-1]:  # Exclude the target variable (assumed to be the last column)
+    plt.figure(figsize=(10, 5))
+    sns.boxplot(x="Dataset", y=column, data=data, palette="Set3")
+    plt.title(f"Box Plot of {column} by Dataset")
+    plt.xlabel("Dataset")
+    plt.ylabel(column)
+    plt.show()
+
+# Step 4: Correlation Heatmap
+# Compute the correlation matrix
+numeric_data = data.select_dtypes(include=[np.number])
+# Compute the correlation matrix using only numeric data
+correlation_matrix = numeric_data.corr()
+
+# Plot the heatmap
+plt.figure(figsize=(12, 8))
+sns.heatmap(correlation_matrix, annot=True, fmt=".2f", cmap="coolwarm", cbar=True)
+plt.title("Correlation Heatmap of Features")
+plt.show()
+
+# Step 5: Distribution Plots
+# Visualize the distribution of features for each dataset
+for column in data.columns[:-1]:  # Exclude the target variable
+    plt.figure(figsize=(10, 5))
+    for dataset in data["Dataset"].unique():
+        sns.kdeplot(data[data["Dataset"] == dataset][column], label=f"Dataset {dataset}")
+    plt.title(f"Distribution of {column} by Dataset")
+    plt.xlabel(column)
+    plt.ylabel("Density")
+    plt.legend()
+    plt.show()
+
+  
