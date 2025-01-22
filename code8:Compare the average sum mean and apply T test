@@ -1,0 +1,119 @@
+#Compare the average sum mean and apply T test
+import numpy as np
+import pandas as pd
+from scipy.stats import f_oneway, ttest_ind
+import matplotlib.pyplot as plt
+
+
+datasets = [videodata, videodata1, videodata2, videodata3]
+dataset_labels = ["videodata", "videodata1", "videodata2", "videodata3"]
+
+# Step 2: Calculate Mean, SD, Sum, and Average for each column
+summary_stats = {}
+for i, dataset in enumerate(datasets):
+    means = np.mean(dataset, axis=0)
+    sds = np.std(dataset, axis=0)
+    sums = np.sum(dataset, axis=0)
+    averages = np.mean(dataset, axis=1)
+
+    summary_stats[dataset_labels[i]] = {
+        "Mean": means,
+        "SD": sds,
+        "Sum": sums,
+        "Average": averages
+    }
+
+# Step 3: Visualize the Mean and Sum for each dataset
+for label, stats in summary_stats.items():
+    # Mean Visualization
+    plt.figure(figsize=(10, 4))
+    plt.bar(range(len(stats["Mean"])), stats["Mean"], color='skyblue', label="Mean")
+    plt.xlabel('Columns')
+    plt.ylabel('Mean Values')
+    plt.title(f'Mean for {label}')
+    plt.legend()
+    plt.show()
+
+    # Sum Visualization
+    plt.figure(figsize=(10, 4))
+    plt.bar(range(len(stats["Sum"])), stats["Sum"], color='orange', label="Sum")
+    plt.xlabel('Columns')
+    plt.ylabel('Sum Values')
+    plt.title(f'Sum for {label}')
+    plt.legend()
+    plt.show()
+    
+    # Average Visualization (per subject)
+    plt.figure(figsize=(10, 4))
+    plt.bar(range(len(stats["Average"])), stats["Average"], color='green', label="Average per Subject")
+    plt.xlabel('Subjects')
+    plt.ylabel('Average Values')
+    plt.title(f'Average per Subject in {label}')
+    plt.legend()
+    plt.show()
+# Step 4: Compare Mean and Sum between subjects in each dataset
+for label, stats in summary_stats.items():
+    # Mean comparison
+    plt.figure(figsize=(10, 4))
+    plt.bar(range(len(stats["Average"])), stats["Average"], color='green', label="Average per Subject")
+    plt.xlabel('Subjects')
+    plt.ylabel('Average Values')
+    plt.title(f'Average in {label}')
+    plt.legend()
+    plt.show()
+
+# Step 5: Statistical Comparison between Datasets
+print("ANOVA Results (Mean Comparison):")
+mean_anova_results = f_oneway(
+    summary_stats["videodata"]["Mean"],
+    summary_stats["videodata1"]["Mean"],
+    summary_stats["videodata2"]["Mean"],
+    summary_stats["videodata3"]["Mean"]
+)
+print(f"F-statistic: {mean_anova_results.statistic:.4f}, P-value: {mean_anova_results.pvalue:.4f}")
+
+print("\nANOVA Results (Sum Comparison):")
+sum_anova_results = f_oneway(
+    summary_stats["videodata"]["Sum"],
+    summary_stats["videodata1"]["Sum"],
+    summary_stats["videodata2"]["Sum"],
+    summary_stats["videodata3"]["Sum"]
+)
+print(f"F-statistic: {sum_anova_results.statistic:.4f}, P-value: {sum_anova_results.pvalue:.4f}")
+
+# Pairwise Comparison for Means and Sums
+print("\nPairwise T-tests (Mean Comparison):")
+for i in range(len(datasets)):
+    for j in range(i + 1, len(datasets)):
+        t_stat, t_pval = ttest_ind(
+            summary_stats[dataset_labels[i]]["Mean"],
+            summary_stats[dataset_labels[j]]["Mean"]
+        )
+        print(f"{dataset_labels[i]} vs {dataset_labels[j]}: t-stat={t_stat:.4f}, p-value={t_pval:.4f}")
+
+print("\nANOVA Results (Average Comparison):")
+average_anova_results = f_oneway(
+    summary_stats["videodata"]["Average"],
+    summary_stats["videodata1"]["Average"],
+    summary_stats["videodata2"]["Average"],
+    summary_stats["videodata3"]["Average"]
+)
+print(f"F-statistic: {average_anova_results.statistic:.4f}, P-value: {average_anova_results.pvalue:.4f}")
+
+print("\nPairwise T-tests (Sum Comparison):")
+for i in range(len(datasets)):
+    for j in range(i + 1, len(datasets)):
+        t_stat, t_pval = ttest_ind(
+            summary_stats[dataset_labels[i]]["Sum"],
+            summary_stats[dataset_labels[j]]["Sum"]
+        )
+        print(f"{dataset_labels[i]} vs {dataset_labels[j]}: t-stat={t_stat:.4f}, p-value={t_pval:.4f}")
+# Pairwise Comparison for Averages
+print("\nPairwise T-tests (Average Comparison):")
+for i in range(len(datasets)):
+    for j in range(i + 1, len(datasets)):
+        t_stat, t_pval = ttest_ind(
+            summary_stats[dataset_labels[i]]["Average"],
+            summary_stats[dataset_labels[j]]["Average"]
+        )
+        print(f"{dataset_labels[i]} vs {dataset_labels[j]}: t-stat={t_stat:.4f}, p-value={t_pval:.4f}")
