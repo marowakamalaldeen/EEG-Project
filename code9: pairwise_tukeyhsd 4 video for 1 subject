@@ -1,0 +1,60 @@
+#pairwise_tukeyhsd 4 video for 1 subject
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+from statsmodels.formula.api import mixedlm
+import scipy.stats as stats # Import the scipy.stats module
+# Step 1: Simulate or load data
+# Replace this with your actual data
+data = {
+    "Subject": np.tile(range(1, 11), 4),  # 10 subjects, repeated for 4 datasets
+    "Dataset": np.repeat(["videodata", "videodata1", "videodata2", "videodata3"], 10),
+    "CV": np.random.rand(40),  # Replace with your CV values
+    "Mean": np.random.rand(40),  # Replace with your Mean values
+}
+
+df = pd.DataFrame(data)
+
+# Step 2: Visualize the data
+sns.boxplot(x="Dataset", y="CV", data=df, palette="Set2",legend=False)
+plt.title("Coefficient of Variation (CV) Across Datasets")
+plt.show()
+
+sns.boxplot(x="Dataset", y="Mean", data=df, palette="Set3",legend=False)
+plt.title("Mean Across Datasets")
+plt.show()
+
+# Step 3: Fit a Linear Mixed Effects Model
+# Random effect: Subject, Fixed effect: Dataset
+model = mixedlm("CV ~ Dataset", df, groups=df["Subject"])
+result = model.fit()
+
+# Step 4: Summarize Results
+print(result.summary())
+
+# Step 5: Statistical Significance of Fixed Effects using LRT
+null_model = mixedlm("CV ~ 1", df, groups=df["Subject"]).fit()  # Null model (no fixed effects)
+alt_model = mixedlm("CV ~ Dataset", df, groups=df["Subject"]).fit()  # Alternative model (with fixed effects)
+
+# Likelihood Ratio Test (LRT)
+lrt_stat = 2 * (alt_model.llf - null_model.llf)  # LRT statistic
+df_diff = alt_model.df_modelwc - null_model.df_modelwc  # Difference in degrees of freedom
+p_value = stats.chi2.sf(lrt_stat, df_diff)  # P-value from chi-square distribution
+
+print("Likelihood Ratio Test Results:")
+print(f"LRT Statistic: {lrt_stat:.4f}")
+print(f"Degrees of Freedom: {df_diff}")
+print(f"P-value: {p_value:.4f}")
+
+if p_value < 0.05:
+    print("The fixed effects (Dataset) significantly improve the model.")
+else:
+    print("No significant effect of the fixed effects (Dataset).")
+
+
+# Step 6: Pairwise Comparisons (Optional)
+from statsmodels.stats.multicomp import pairwise_tukeyhsd
+
+tukey = pairwise_tukeyhsd(endog=df["CV"], groups=df["Dataset"], alpha=0.05)
+print(tukey)
