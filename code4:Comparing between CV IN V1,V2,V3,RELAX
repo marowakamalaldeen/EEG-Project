@@ -1,0 +1,30 @@
+#Comparing between CV IN V1,V2,V3,RELAX
+
+plt.plot(SUM)
+plt.xlabel('X Axis')
+plt.ylabel('Y Axis')
+plt.title('SUMof video data')
+plt.show()
+
+plt.plot(SUM1)
+plt.xlabel('X Axis')
+plt.ylabel('Y Axis')
+plt.title('SUM1 of video data1')
+plt.show()
+
+plt.plot(SUM2)
+plt.xlabel('X Axis')
+plt.ylabel('Y Axis')
+plt.title('SUM2 of video data2')
+plt.show()
+
+plt.plot(SUM3)
+plt.xlabel('X Axis')
+plt.ylabel('Y Axis')
+plt.title('SUM3 of video data3')
+plt.show()
+print(SUM)
+print(SUM1)
+print(SUM2)
+print(SUM3)
+
