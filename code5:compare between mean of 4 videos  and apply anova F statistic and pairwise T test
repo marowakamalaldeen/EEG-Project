@@ -1,0 +1,63 @@
+#compare between mean of 4 videos  and apply anova F statistic and pairwise T test
+
+import pandas as pd
+from scipy.stats import f_oneway, ttest_ind
+import matplotlib.pyplot as plt
+
+
+datasets = [videodata, videodata1, videodata2, videodata3]
+dataset_labels = ["videodata", "videodata1", "videodata2", "videodata3"]
+
+# Step 2: Calculate Mean, SD, CV, and Average for each column
+summary_stats = {}
+for i, dataset in enumerate(datasets):
+    means = np.mean(dataset, axis=0)
+    sds = np.std(dataset, axis=0)
+    cvs = np.std(dataset, axis=0) / np.mean(dataset, axis=0)
+    sum = np.sum(dataset, axis=0)
+    averages = np.mean(dataset, axis=1)
+
+    summary_stats[dataset_labels[i]] = {
+        "Mean": means,
+        "SD": sds,
+        "CV": cvs,
+        'SUM':sum,
+        "Average": averages
+    }
+
+
+# Step 3: Visualize the Mean and CV for each dataset (example for one column)
+for label, stats in summary_stats.items():
+    plt.figure(figsize=(10, 4))
+    plt.bar(range(len(stats["Mean"])), stats["Mean"], color='skyblue', label="Mean")
+    plt.xlabel('Columns')
+    plt.ylabel('Values')
+    plt.title(f'Mean for {label}')
+    plt.legend()
+    plt.show()
+
+# Step 4: Statistical Comparison between Datasets
+print("ANOVA Results:")
+anova_results = f_oneway(
+    summary_stats["videodata"]["Mean"],
+    summary_stats["videodata1"]["Mean"],
+    summary_stats["videodata2"]["Mean"],
+    summary_stats["videodata3"]["Mean"]
+)
+print(f"F-statistic: {anova_results.statistic:.4f}, P-value: {anova_results.pvalue:.4f}")
+
+if anova_results.pvalue < 0.05:
+    print("There is a statistically significant difference between the datasets.")
+else:
+    print("No statistically significant difference between the datasets.")
+
+# Step 5: Pairwise Comparison (T-tests)
+print("\nPairwise T-tests:")
+for i in range(len(datasets)):
+    for j in range(i + 1, len(datasets)):
+        t_stat, t_pval = ttest_ind(
+            summary_stats[dataset_labels[i]]["Mean"],
+            summary_stats[dataset_labels[j]]["Mean"]
+        )
+        print(f"{dataset_labels[i]} vs {dataset_labels[j]}: t-stat={t_stat:.4f}, p-value={t_pval:.4f}")
+
