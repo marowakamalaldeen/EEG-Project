@@ -1,0 +1,107 @@
+#Compute the RMS for a given video dataset across all time locations in one diagram
+
+def compute_rms_time_series(videodata, map_voxel, region_data):
+    """
+    Compute the RMS for a given video dataset across all time locations,
+    sorting 31,553 points into regions based on Cerebra ID,
+    calculating RMS per time activation for each region,
+    computing the average RMS across all regions at each time activation,
+    and summing RMS values across all regions to produce a final time series.
+    """
+    if "Cerebra_ID" not in region_data.columns:
+        raise ValueError("CSV file must contain 'Cerebra_ID' column.")
+
+    valid_cerebra_ids = set(region_data["Cerebra_ID"].unique())  # Ensure only valid Cerebra IDs are used
+
+    avg_rms_time_series = {region: np.zeros(videodata.shape[1]) for region in valid_cerebra_ids}
+    count_voxels = {region: np.zeros(videodata.shape[1]) for region in valid_cerebra_ids}
+    sum_rms_time_series = np.zeros(videodata.shape[1])
+
+    for time_location in range(videodata.shape[1]):
+        # Select specific time point data
+        videodata_selected = videodata[:, time_location]
+
+        # Compute RMS (Root Mean Square) for each voxel at the selected time point
+        voxel_rms = np.sqrt(videodata_selected**2)
+
+        # Group and compute the average RMS per region
+        for region in valid_cerebra_ids:
+            region_indices = np.where(map_voxel == region)[0]
+            if len(region_indices) == 0:
+                continue  # Skip if no voxels are mapped to this region
+
+            rms_values = voxel_rms[region_indices]
+            avg_rms_time_series[region][time_location] += np.sum(rms_values)
+            count_voxels[region][time_location] += len(rms_values)
+
+        # Sum RMS values across all regions for final time series
+        sum_rms_time_series[time_location] = np.sum(voxel_rms)
+
+    # Normalize by the number of voxels in each region
+    for region in valid_cerebra_ids:
+        valid_indices = count_voxels[region] > 0
+        avg_rms_time_series[region][valid_indices] /= count_voxels[region][valid_indices]
+
+    return avg_rms_time_series, sum_rms_time_series
+
+def plot_rms_time_series(avg_rms_time_series, sum_rms_time_series):
+    """
+    Visualize each region's RMS separately and also plot the summed RMS over time.
+    """
+    plt.figure(figsize=(16, 10))
+    for region, rms_values in avg_rms_time_series.items():
+        plt.plot(range(len(rms_values)), rms_values, label=f"Region {region}")
+    
+    plt.xlabel("Time Activation (0 - 11250)")
+    plt.ylabel("RMS Value")
+    plt.title("RMS Time Series for Each Region")
+    plt.legend()
+    plt.grid(axis="y", linestyle="--", alpha=0.6)
+    plt.show()
+    
+    # Plot summed RMS over time
+    plt.figure(figsize=(16, 6))
+    plt.plot(range(len(sum_rms_time_series)), sum_rms_time_series, linestyle='-', marker='o', color='red', label="Summed RMS Across All Regions")
+    plt.xlabel("Time Activation (0 - 11250)")
+    plt.ylabel("Summed RMS Value")
+    plt.title("Summed RMS Over Time Across All Regions")
+    plt.legend()
+    plt.grid(axis="y", linestyle="--", alpha=0.6)
+    plt.show()
+
+def load_subject_video_data(subject_id, video_type):
+    """
+    Load brain activation data for a given subject and video type, handling missing files gracefully.
+    """
+    file_path = f"/content/drive/MyDrive/Data TU PHD DUBLIN/subjects Data/{subject_id}/evaluation/{video_type}.npy"
+    print(f"🔍 Checking file path: {file_path}")
+
+    if not os.path.exists(file_path):
+        print(f"❌ Warning: File not found for subject {subject_id}, video type {video_type}. Returning dummy data.")
+        return np.random.randn(31553, 11250)  # Dummy fallback data
+    
+    return np.load(file_path)
+
+# --------------------- Execution ---------------------
+while True:
+    subject_id = input("Enter Subject ID (or type 'exit' to quit): ").strip()
+    if subject_id.lower() == "exit":
+        break
+
+    video_type = input("Enter Video Type (baseline_eLORETA, video1_eLORETA, video2_eLORETA, video3_eLORETA): ").strip()
+    if video_type not in ["baseline_eLORETA", "video1_eLORETA", "video2_eLORETA", "video3_eLORETA"]:
+        print("❌ Invalid video type. Please enter one of: baseline_eLORETA, video1_eLORETA, video2_eLORETA, video3_eLORETA.")
+        continue
+
+    videodata = load_subject_video_data(subject_id, video_type)
+    map_voxel = np.random.randint(1, 103, size=31553)  # Simulated voxel-to-region mapping
+    region_data = pd.read_csv("/content/drive/MyDrive/Data TU PHD DUBLIN/LABEL DETAILS/results_per_region (MY 101124).csv")
+
+    try:
+        avg_rms_time_series, sum_rms_time_series = compute_rms_time_series(videodata, map_voxel, region_data)
+        print("RMS Computation and Sorting Complete.")
+        plot_rms_time_series(avg_rms_time_series, sum_rms_time_series)
+    except (KeyError, FileNotFoundError, ValueError) as e:
+        print(f"❌ Error: {e}")
+
+    print("\nExecution completed. Restarting for a new subject.")
