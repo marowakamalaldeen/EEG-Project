@@ -1,1 +1,349 @@
 
+def compute_rms_time_series2(region_data, videodata):
+    """
+    Compute the RMS for a given dataset across all time locations,
+    sorting 31,553 points into regions based on Cerebra ID,
+    calculating RMS per time activation for each region,
+    computing the average RMS across all regions at each time activation,
+    summing RMS values across all regions to produce a final time series,
+    and computing the average RMS across all regions according to Multiple Resource Theory ID.in 12 diagagram
+    """
+    required_columns = {"Cerebra_ID", "Multiple resource theory ID", "Region_name", "MRT ID Name"}
+    missing_columns = required_columns - set(region_data.columns)
+    if missing_columns:
+        raise ValueError(f"CSV file must contain the following columns: {missing_columns}")
+
+    valid_cerebra_ids = set(region_data["Cerebra_ID"].unique())
+    cerebra_to_mrt_id = region_data.set_index("Cerebra_ID")["Multiple resource theory ID"].to_dict()
+    mrt_id_to_name = region_data.set_index("Multiple resource theory ID")["MRT ID Name"].to_dict()
+    unique_mrt_ids = np.unique(list(cerebra_to_mrt_id.values()))
+
+    # Compute RMS for each voxel at all time locations
+    voxel_rms = np.sqrt(np.mean(videodata**2, axis=1))
+
+    # Compute RMS per Cerebra ID
+    cerebra_rms_dict = {cerebra: [] for cerebra in valid_cerebra_ids}
+    for cerebra_id, rms_value in zip(region_data["Cerebra_ID"], voxel_rms):
+        cerebra_rms_dict[cerebra_id].append(rms_value)
+
+    # Compute RMS per Multiple Resource Theory ID
+    mrt_rms_dict = {mrt_id: [] for mrt_id in unique_mrt_ids}
+    for cerebra_id, rms_values in cerebra_rms_dict.items():
+        mrt_id = cerebra_to_mrt_id.get(cerebra_id, "Unknown MRT ID")
+        mrt_rms_dict[mrt_id].extend(rms_values)
+
+    return cerebra_rms_dict, mrt_rms_dict, unique_mrt_ids, mrt_id_to_name
+
+def plot_rms_time_series2(mrt_rms_dict, mrt_id_to_name):
+    """
+    Visualize each of the 12 Multiple Resource Theory IDs' RMS separately as time series with title including MRT ID and Name.
+    """
+    plt.figure(figsize=(20, 12))
+    for mrt_id, rms_values in mrt_rms_dict.items():
+        mrt_name = mrt_id_to_name.get(mrt_id, "Unknown MRT Name")
+        plt.plot(range(len(rms_values)), rms_values, label=f"{mrt_name} (MRT ID {mrt_id})")
+    plt.xlabel("Time Activation (0 - 11250)")
+    plt.ylabel("RMS Value")
+    plt.title("RMS Time Series for Each Multiple Resource Theory ID")
+    plt.legend(loc='upper right', fontsize=8)
+    plt.grid(axis="y", linestyle="--", alpha=0.6)
+    plt.show()
+
+    # Plot each MRT ID separately
+    for mrt_id, rms_values in mrt_rms_dict.items():
+        mrt_name = mrt_id_to_name.get(mrt_id, "Unknown MRT Name")
+        plt.figure(figsize=(16, 6))
+        plt.plot(range(len(rms_values)), rms_values, linestyle='-', marker='o', label=f"{mrt_name} (MRT ID {mrt_id})")
+        plt.xlabel("Time Activation (0 - 11250)")
+        plt.ylabel("RMS Value")
+        plt.title(f"RMS Time Series for {mrt_name} (MRT ID {mrt_id})")
+        plt.legend()
+        plt.grid(axis="y", linestyle="--", alpha=0.6)
+        plt.show()
+
+
+def compute_rms_time_series1(region_data, videodata):
+    """
+    Compute the RMS for a given dataset across all time locations,
+    sorting 31,553 points into regions based on Cerebra ID,
+    calculating RMS per time activation for each region,
+    computing the average RMS across all regions at each time activation,
+    summing RMS values across all regions to produce a final time series,
+    and computing the average RMS across all regions according to Multiple Resource Theory ID.in one diagram
+    """
+    required_columns = {"Cerebra_ID", "Multiple resource theory ID", "Region_name", "MRT ID Name"}
+    missing_columns = required_columns - set(region_data.columns)
+    if missing_columns:
+        raise ValueError(f"CSV file must contain the following columns: {missing_columns}")
+
+    valid_cerebra_ids = set(region_data["Cerebra_ID"].unique())
+    cerebra_to_mrt_id = region_data.set_index("Cerebra_ID")["Multiple resource theory ID"].to_dict()
+    unique_mrt_ids = np.unique(list(cerebra_to_mrt_id.values()))
+
+    # Compute RMS for each voxel at all time locations
+    voxel_rms = np.sqrt(np.mean(videodata**2, axis=1))
+
+    # Compute RMS per Cerebra ID
+    cerebra_rms_dict = {cerebra: [] for cerebra in valid_cerebra_ids}
+    for cerebra_id, rms_value in zip(region_data["Cerebra_ID"], voxel_rms):
+        cerebra_rms_dict[cerebra_id].append(rms_value)
+
+    # Compute RMS per Multiple Resource Theory ID
+    mrt_rms_dict = {mrt_id: [] for mrt_id in unique_mrt_ids}
+    for cerebra_id, rms_values in cerebra_rms_dict.items():
+        mrt_id = cerebra_to_mrt_id.get(cerebra_id, "Unknown MRT ID")
+        mrt_rms_dict[mrt_id].extend(rms_values)
+
+    return cerebra_rms_dict, mrt_rms_dict, unique_mrt_ids
+
+def plot_rms_time_series1(cerebra_rms_dict, mrt_rms_dict, unique_mrt_ids, subject_id, video_type):
+    """
+    Visualize each Multiple Resource Theory ID's RMS separately and plot the summed RMS over time,
+    including Subject ID and Video Type in the plot titles.
+    """
+    plt.figure(figsize=(16, 6))
+    for cerebra_id, rms_values in cerebra_rms_dict.items():
+        plt.plot(range(len(rms_values)), rms_values, label=f"Cerebra {cerebra_id}")
+    plt.xlabel("Time Activation (0 - 11250)")
+    plt.ylabel("RMS Value")
+    plt.title(f"RMS Time Series for Each Cerebra ID\nSubject: {subject_id} | Video Type: {video_type}")
+    plt.legend()
+    plt.grid(axis="y", linestyle="--", alpha=0.6)
+    plt.show()
+
+    plt.figure(figsize=(16, 6))
+    summed_rms_series = [sum(values) for values in mrt_rms_dict.values()]
+    plt.plot(unique_mrt_ids, summed_rms_series, linestyle='-', marker='o', color='red', label="Summed RMS Across MRT IDs")
+    plt.xlabel("Multiple Resource Theory ID")
+    plt.ylabel("Summed RMS Value")
+    plt.title(f"Summed RMS Over Multiple Resource Theory IDs\nSubject: {subject_id} | Video Type: {video_type}")
+    plt.legend()
+    plt.grid(axis="y", linestyle="--", alpha=0.6)
+    plt.show()
+
+
+
+
+
+
+
+def plot_rms_time_series(avg_rms_time_series, sum_rms_time_series):
+    """
+    Visualize each region's RMS separately and also plot the summed RMS over time.
+    """
+    plt.figure(figsize=(16, 10))
+    for region, rms_values in avg_rms_time_series.items():
+        plt.plot(range(len(rms_values)), rms_values, label=f"Region {region}")
+
+    plt.xlabel("Time Activation (0 - 11250)")
+    plt.ylabel("RMS Value")
+    plt.title("RMS Time Series for Each Region")
+    plt.legend()
+    plt.grid(axis="y", linestyle="--", alpha=0.6)
+    plt.show()
+
+    # Plot summed RMS over time
+    plt.figure(figsize=(16, 6))
+    plt.plot(range(len(sum_rms_time_series)), sum_rms_time_series, linestyle='-', marker='o', color='red', label="Summed RMS Across All Regions")
+    plt.xlabel("Time Activation (0 - 11250)")
+    plt.ylabel("Summed RMS Value")
+    plt.title("Summed RMS Over Time Across All Regions")
+    plt.legend()
+    plt.grid(axis="y", linestyle="--", alpha=0.6)
+    plt.show()
+
+
+# Ensure required functions are already defined before running this
+
+def compute_rms_time_series(videodata, map_voxel, region_data):
+    """
+    Compute the RMS for a given video dataset across all time locations,
+    sorting 31,553 points into regions based on Cerebra ID,
+    calculating RMS per time activation for each region,
+    computing the average RMS across all regions at each time activation,
+    and summing RMS values across all regions to produce a final time series.
+    """
+    if "Cerebra_ID" not in region_data.columns or "Region_name" not in region_data.columns:
+        raise ValueError("CSV file must contain 'Cerebra_ID' and 'Region_name' columns.")
+
+    valid_cerebra_ids = set(region_data["Cerebra_ID"].unique())  # Ensure only valid Cerebra IDs are used
+    region_name_map = region_data.set_index("Cerebra_ID")["Region_name"].to_dict()
+
+    avg_rms_time_series = {region: np.zeros(videodata.shape[1]) for region in valid_cerebra_ids}
+    count_voxels = {region: np.zeros(videodata.shape[1]) for region in valid_cerebra_ids}
+    sum_rms_time_series = np.zeros(videodata.shape[1])
+
+    for time_location in range(videodata.shape[1]):
+        # Select specific time point data
+        videodata_selected = videodata[:, time_location]
+
+        # Compute RMS (Root Mean Square) for each voxel at the selected time point
+        voxel_rms = np.sqrt(videodata_selected**2)
+
+        # Group and compute the average RMS per region
+        for region in valid_cerebra_ids:
+            region_indices = np.where(map_voxel == region)[0]
+            if len(region_indices) == 0:
+                continue  # Skip if no voxels are mapped to this region
+
+            rms_values = voxel_rms[region_indices]
+            avg_rms_time_series[region][time_location] += np.sum(rms_values)
+            count_voxels[region][time_location] += len(rms_values)
+
+        # Sum RMS values across all regions for final time series
+        sum_rms_time_series[time_location] = np.sum(voxel_rms)
+
+    # Normalize by the number of voxels in each region
+    for region in valid_cerebra_ids:
+        valid_indices = count_voxels[region] > 0
+        avg_rms_time_series[region][valid_indices] /= count_voxels[region][valid_indices]
+
+    return avg_rms_time_series, sum_rms_time_series, region_name_map
+
+def plot_rms_time_series(avg_rms_time_series, sum_rms_time_series, region_name_map, subject_id, video_type):
+    """
+    Visualize each region's RMS separately in 102 diagrams with both Region Name and Cerebra ID,
+    and also plot the summed RMS over time. Include Subject ID and Video Type in titles.
+    """
+    for region, rms_values in avg_rms_time_series.items():
+        region_name = region_name_map.get(region, f"Region {region}")
+        region_label = f"{region_name} (ID: {region})"
+        plt.figure(figsize=(10, 5))
+        plt.plot(range(len(rms_values)), rms_values, label=region_label)
+        plt.xlabel("Time Activation (0 - 11250)")
+        plt.ylabel("RMS Value")
+        plt.title(f"{region_label}\nSubject: {subject_id} | Video Type: {video_type}")
+        plt.legend()
+        plt.grid(axis="y", linestyle="--", alpha=0.6)
+        plt.show()
+
+    # Plot summed RMS over time
+    plt.figure(figsize=(16, 6))
+    plt.plot(range(len(sum_rms_time_series)), sum_rms_time_series, linestyle='-', marker='o', color='red', label="Summed RMS Across All Regions")
+    plt.xlabel("Time Activation (0 - 11250)")
+    plt.ylabel("Summed RMS Value")
+    plt.title(f"Summed RMS Over Time Across All Regions\nSubject: {subject_id} | Video Type: {video_type}")
+    plt.legend()
+    plt.grid(axis="y", linestyle="--", alpha=0.6)
+    plt.show()
+
+def load_subject_video_data(subject_id, video_type):
+    """
+    Load brain activation data for a given subject and video type, handling missing files gracefully.
+    """
+    file_path = f"/content/drive/MyDrive/Data TU PHD DUBLIN/subjects Data/{subject_id}/evaluation/{video_type}.npy"
+    print(f"🔍 Checking file path: {file_path}")
+
+    if not os.path.exists(file_path):
+        print(f"❌ Warning: File not found for subject {subject_id}, video type {video_type}. Returning dummy data.")
+        return np.random.randn(31553, 11250)  # Dummy fallback data
+
+    return np.load(file_path)
+
+def load_subject_video_data(subject_id, video_type):
+    """
+    Load brain activation data for a given subject and video type.
+    """
+    file_path = f"/content/drive/MyDrive/Data TU PHD DUBLIN/subjects Data/{subject_id}/evaluation/{video_type}_eLORETA.npy"
+
+    print(f"🔍 Checking file path: {file_path}")  # Debugging print
+
+    if not os.path.exists(file_path):
+        print(f"❌ Warning: File not found for subject {subject_id}, video type {video_type}. Returning dummy data.")
+        return np.random.randn(31335, 11250)  # Dummy fallback data
+
+    return np.load(file_path)
+
+# Validate required columns exist
+if "Cerebra_ID" not in region_data.columns or "Region_name" not in region_data.columns:
+    raise ValueError("CSV file must contain 'Cerebra_ID' and 'Region_name' columns.")
+
+# Create mapping from Cerebra_ID to Region_name
+mapping_region_id_to_name = region_data.set_index("Cerebra_ID")["Region_name"].to_dict()
+# --------------------- Helper Functions ---------------------
+
+def load_subject_video_data(subject_id, video_type):
+    """
+    Load brain activation data for a given subject and video type.
+
+    Parameters:
+        subject_id (str): Subject ID (e.g., 'NDARZY502FAG')
+        video_type (str): Video type (e.g., "baseline", "video1", "video2", "video3")
+
+    Returns:
+        np.ndarray: Brain voxel activation data.
+    """
+    file_path = f"/content/drive/MyDrive/Data TU PHD DUBLIN/subjects Data/{subject_id}/evaluation/{video_type}_eLORETA.npy"
+    return np.load(file_path)
+
+
+def load_subject_video_data(subject_id, video_type):
+    """
+    Load brain activation data for a given subject and video type.
+    """
+    file_path = f"/content/drive/MyDrive/Data TU PHD DUBLIN/subjects Data/{subject_id}/evaluation/{video_type}.npy"
+
+    # Debugging print to check the file path
+    print(f"🔍 Checking file path: {file_path}")
+
+    if not os.path.exists(file_path):
+        print(f"❌ Warning: File not found for subject {subject_id}, video type {video_type}. Returning dummy data.")
+        return np.random.randn(31553, 11250)  # Dummy fallback data
+
+    return np.load(file_path)
+
+
+def get_number_of_voxel_per_region(cerebra_id):
+    """
+    Get the number of voxels for a given cerebral region (Cerebra ID) and its region name.
+
+    Parameters:
+        cerebra_id (int): The ID of the cerebral region.
+
+    Returns:
+        tuple: (voxel_count (int), region_name (str))
+    """
+    voxel_count = np.sum(map_voxel == cerebra_id)  # Count occurrences of the Cerebra ID
+    region_name = mapping_region_id_to_name.get(cerebra_id, "Unknown Region")
+    return voxel_count, region_name
+
+
+def plot_voxel_activation_for_region(time_location, cerebra_id, video_data):
+    """
+    Plot voxel activation histograms for the selected region and time location,
+    for each video type in video_data.
+
+    Parameters:
+        time_location (int): The time index to analyze.
+        cerebra_id (int): The Cerebra ID for the region of interest.
+        video_data (dict): Dictionary of video datasets.
+    """
+    # Get indices for voxels in the desired region.
+    region_indices = np.where(map_voxel == cerebra_id)[0]
+
+    plt.figure(figsize=(12, 5))
+    for video_label, data in video_data.items():
+        # Restrict activation data to the region of interest and given time
+        voxel_activation = data[region_indices, time_location]
+        plt.hist(voxel_activation, bins=100, alpha=0.5, label=f"{video_label} - Time {time_location}")
+
+    plt.title(f"Voxel Activation Distribution for Region {cerebra_id} at Time {time_location}")
+    plt.xlabel("Voxel Activation Value")
+    plt.ylabel("Frequency")
+    plt.legend()
+    plt.show()
+
+
+def plot_number_of_voxel_per_region():
+    """
+    Plot a histogram showing the overall voxel counts per cortical region.
+    """
+    unique_regions = np.unique(map_voxel)
+    plt.figure(figsize=(20, 5))
+    plt.hist(map_voxel, bins=len(unique_regions), color="royalblue", alpha=0.7)
+    plt.title("Number of Voxels per Cortical Region")
+    plt.xlabel("Cortical Regions")
+    plt.ylabel("Number of Voxels")
+    plt.show()
+
+
