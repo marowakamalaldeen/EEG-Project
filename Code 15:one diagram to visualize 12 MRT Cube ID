@@ -6,6 +6,10 @@ def load_subject_video_data(subject_id, video_type):
     """
     Load brain activation data for a given subject and video type.
     """
+   def load_subject_video_data(subject_id, video_type):
+    """
+    Load brain activation data for a given subject and video type.
+    """
     file_path = f"/content/drive/MyDrive/Data TU PHD DUBLIN/subjects Data/{subject_id}/evaluation/{video_type}_eLORETA.npy"
     print(f"🔍 Checking file path: {file_path}")  # Debugging print
     if not os.path.exists(file_path):
@@ -13,7 +17,7 @@ def load_subject_video_data(subject_id, video_type):
         return np.random.randn(31335, 11250)  # Dummy fallback data
     return np.load(file_path)
 
-def compute_rms_time_series(region_data, videodata):
+def compute_rms_time_series1(region_data, videodata):
     """
     Compute the RMS for a given dataset across all time locations,
     sorting 31,553 points into regions based on Cerebra ID,
@@ -47,16 +51,17 @@ def compute_rms_time_series(region_data, videodata):
 
     return cerebra_rms_dict, mrt_rms_dict, unique_mrt_ids
 
-def plot_rms_time_series(cerebra_rms_dict, mrt_rms_dict, unique_mrt_ids):
+def plot_rms_time_series1(cerebra_rms_dict, mrt_rms_dict, unique_mrt_ids, subject_id, video_type):
     """
-    Visualize each Multiple Resource Theory ID's RMS separately and plot the summed RMS over time.
+    Visualize each Multiple Resource Theory ID's RMS separately and plot the summed RMS over time,
+    including Subject ID and Video Type in the plot titles.
     """
     plt.figure(figsize=(16, 6))
     for cerebra_id, rms_values in cerebra_rms_dict.items():
         plt.plot(range(len(rms_values)), rms_values, label=f"Cerebra {cerebra_id}")
     plt.xlabel("Time Activation (0 - 11250)")
     plt.ylabel("RMS Value")
-    plt.title("RMS Time Series for Each Cerebra ID")
+    plt.title(f"RMS Time Series for Each Cerebra ID\nSubject: {subject_id} | Video Type: {video_type}")
     plt.legend()
     plt.grid(axis="y", linestyle="--", alpha=0.6)
     plt.show()
@@ -66,7 +71,7 @@ def plot_rms_time_series(cerebra_rms_dict, mrt_rms_dict, unique_mrt_ids):
     plt.plot(unique_mrt_ids, summed_rms_series, linestyle='-', marker='o', color='red', label="Summed RMS Across MRT IDs")
     plt.xlabel("Multiple Resource Theory ID")
     plt.ylabel("Summed RMS Value")
-    plt.title("Summed RMS Over Multiple Resource Theory IDs")
+    plt.title(f"Summed RMS Over Multiple Resource Theory IDs\nSubject: {subject_id} | Video Type: {video_type}")
     plt.legend()
     plt.grid(axis="y", linestyle="--", alpha=0.6)
     plt.show()
@@ -74,16 +79,27 @@ def plot_rms_time_series(cerebra_rms_dict, mrt_rms_dict, unique_mrt_ids):
 # --------------------- Execution ---------------------
 region_data = pd.read_csv("/content/drive/MyDrive/Data TU PHD DUBLIN/LABEL DETAILS/results_per_region (MY 101124).csv")
 
-subject_id = input("Enter Subject ID: ").strip()
-video_type = input("Enter Video Type (baseline_eLORETA, video1_eLORETA, video2_eLORETA, video3_eLORETA): ").strip()
-videodata = load_subject_video_data(subject_id, video_type)
+while True:
+    subject_id = input("Enter Subject ID (or type 'exit' to quit): ").strip()
+    if subject_id.lower() == "exit":
+        break
+    
+    while True:
+        video_type = input("Enter Video Type (baseline_eLORETA, video1_eLORETA, video2_eLORETA, video3_eLORETA) or type 'back' to enter a new subject: ").strip()
+        if video_type.lower() == "back":
+            break
+        
+        videodata = load_subject_video_data(subject_id, video_type)
 
-try:
-    cerebra_rms_dict, mrt_rms_dict, unique_mrt_ids = compute_rms_time_series(region_data, videodata)
-    print("RMS Computation and Sorting Complete.")
-    plot_rms_time_series(cerebra_rms_dict, mrt_rms_dict, unique_mrt_ids)
-except (KeyError, FileNotFoundError, ValueError) as e:
-    print(f"❌ Error: {e}")
+        try:
+            cerebra_rms_dict, mrt_rms_dict, unique_mrt_ids = compute_rms_time_series1(region_data, videodata)
+            print("RMS Computation and Sorting Complete.")
+            plot_rms_time_series1(cerebra_rms_dict, mrt_rms_dict, unique_mrt_ids, subject_id, video_type)
+        except (KeyError, FileNotFoundError, ValueError) as e:
+            print(f"❌ Error: {e}")
 
-print("\nExecution completed.")
+        print("\nExecution completed. You can enter another video type or type 'back' to enter a new subject.")
+
+
+
 
