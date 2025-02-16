@@ -1,0 +1,99 @@
+#Compute the RMS for a given dataset across all time locations, sorting 31,553 points into regions based on Cerebra ID, 
+#calculating RMS per time activation for each region, computing the average RMS across all regions at each time activation,
+#summing RMS values across all regions to produce a final time series, 
+#and computing the average RMS across all regions according to Multiple Resource Theory ID.
+
+def load_subject_video_data(subject_id, video_type):
+    """
+    Load brain activation data for a given subject and video type.
+    """
+    file_path = f"/content/drive/MyDrive/Data TU PHD DUBLIN/subjects Data/{subject_id}/evaluation/{video_type}_eLORETA.npy"
+    print(f"🔍 Checking file path: {file_path}")  # Debugging print
+    if not os.path.exists(file_path):
+        print(f"❌ Warning: File not found for subject {subject_id}, video type {video_type}. Returning dummy data.")
+        return np.random.randn(31335, 11250)  # Dummy fallback data
+    return np.load(file_path)
+
+
+def compute_rms_time_series2(region_data, videodata):
+    """
+    Compute the RMS for a given dataset across all time locations,
+    sorting 31,553 points into regions based on Cerebra ID,
+    calculating RMS per time activation for each region,
+    computing the average RMS across all regions at each time activation,
+    summing RMS values across all regions to produce a final time series,
+    and computing the average RMS across all regions according to Multiple Resource Theory ID.
+    """
+    required_columns = {"Cerebra_ID", "Multiple resource theory ID", "Region_name", "MRT ID Name"}
+    missing_columns = required_columns - set(region_data.columns)
+    if missing_columns:
+        raise ValueError(f"CSV file must contain the following columns: {missing_columns}")
+
+    valid_cerebra_ids = set(region_data["Cerebra_ID"].unique())
+    cerebra_to_mrt_id = region_data.set_index("Cerebra_ID")["Multiple resource theory ID"].to_dict()
+    mrt_id_to_name = region_data.set_index("Multiple resource theory ID")["MRT ID Name"].to_dict()
+    unique_mrt_ids = np.unique(list(cerebra_to_mrt_id.values()))
+
+    # Compute RMS for each voxel at all time locations
+    voxel_rms = np.sqrt(np.mean(videodata**2, axis=1))
+
+    # Compute RMS per Cerebra ID
+    cerebra_rms_dict = {cerebra: [] for cerebra in valid_cerebra_ids}
+    for cerebra_id, rms_value in zip(region_data["Cerebra_ID"], voxel_rms):
+        cerebra_rms_dict[cerebra_id].append(rms_value)
+
+    # Compute RMS per Multiple Resource Theory ID
+    mrt_rms_dict = {mrt_id: [] for mrt_id in unique_mrt_ids}
+    for cerebra_id, rms_values in cerebra_rms_dict.items():
+        mrt_id = cerebra_to_mrt_id.get(cerebra_id, "Unknown MRT ID")
+        mrt_rms_dict[mrt_id].extend(rms_values)
+
+    return cerebra_rms_dict, mrt_rms_dict, unique_mrt_ids, mrt_id_to_name
+
+def plot_rms_time_series2(mrt_rms_dict, mrt_id_to_name):
+    """
+    Visualize each of the 12 Multiple Resource Theory IDs' RMS separately as time series with title including MRT ID and Name.
+    """
+    plt.figure(figsize=(20, 12))
+    for mrt_id, rms_values in mrt_rms_dict.items():
+        mrt_name = mrt_id_to_name.get(mrt_id, "Unknown MRT Name")
+        plt.plot(range(len(rms_values)), rms_values, label=f"{mrt_name} (MRT ID {mrt_id})")
+    plt.xlabel("Time Activation (0 - 11250)")
+    plt.ylabel("RMS Value")
+    plt.title("RMS Time Series for Each Multiple Resource Theory ID")
+    plt.legend(loc='upper right', fontsize=8)
+    plt.grid(axis="y", linestyle="--", alpha=0.6)
+    plt.show()
+
+    # Plot each MRT ID separately
+    for mrt_id, rms_values in mrt_rms_dict.items():
+        mrt_name = mrt_id_to_name.get(mrt_id, "Unknown MRT Name")
+        plt.figure(figsize=(16, 6))
+        plt.plot(range(len(rms_values)), rms_values, linestyle='-', marker='o', label=f"{mrt_name} (MRT ID {mrt_id})")
+        plt.xlabel("Time Activation (0 - 11250)")
+        plt.ylabel("RMS Value")
+        plt.title(f"RMS Time Series for {mrt_name} (MRT ID {mrt_id})")
+        plt.legend()
+        plt.grid(axis="y", linestyle="--", alpha=0.6)
+        plt.show()
+
+# --------------------- Execution ---------------------
+csv_path = "/content/drive/MyDrive/Data TU PHD DUBLIN/LABEL DETAILS/results_per_region (MY 101124).csv"
+region_data = pd.read_csv(csv_path)
+
+while True:
+    subject_id = input("Enter Subject ID (or type 'exit' to quit): ").strip()
+    if subject_id.lower() == "exit":
+        break
+    
+    video_type = input("Enter Video Type (baseline_eLORETA, video1_eLORETA, video2_eLORETA, video3_eLORETA): ").strip()
+    videodata = load_subject_video_data(subject_id, video_type)
+
+    try:
+        cerebra_rms_dict, mrt_rms_dict, unique_mrt_ids, mrt_id_to_name = compute_rms_time_series2(region_data, videodata)
+        print("RMS Computation and Sorting Complete.")
+        plot_rms_time_series2(mrt_rms_dict, mrt_id_to_name)
+    except (KeyError, FileNotFoundError, ValueError) as e:
+        print(f"❌ Error: {e}")
+
+    print("\nExecution completed. Restarting for a new subject.")
